@@ -31,27 +31,20 @@ def copy_contents_from_src_to_dest(src, dest):
         else:
             copy_contents_from_src_to_dest(src_full_path, dest_full_path)
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     """
     Generates an HTML page from a Markdown source file using a specified HTML template.
 
     Args:
         from_path (str): Path to the source Markdown file.
-        template_path (str): Path to the HTML template file containing placeholders for title and content.
-        dest_path (str): Destination path where the generated HTML file will be saved.
+        template_path (str): Path to the HTML template file.
+        dest_path (str): Destination path for the generated HTML file.
+        basepath (str): Base path to use for resolving absolute URLs in href and src attributes.
 
-    Side Effects:
-        - Reads the Markdown and template files from disk.
-        - Writes the generated HTML file to the specified destination.
-        - Creates destination directories if they do not exist.
-
-    Placeholders in the template:
-        - "{{ Title }}": Will be replaced with the extracted title from the Markdown content.
-        - "{{ Content }}": Will be replaced with the converted HTML content from the Markdown.
-
-    Raises:
-        FileNotFoundError: If the source or template files do not exist.
-        OSError: If there is an error creating directories or writing the output file.
+    The function reads the Markdown content, converts it to HTML, extracts the title,
+    and injects both into the template. It also rewrites absolute URLs in the template
+    to use the provided basepath. The resulting HTML is written to the destination path,
+    creating directories as needed.
     """
     print(f"Generating from {from_path} to {dest_path} using {template_path}")
     with open(from_path, "r", encoding="utf-8") as file_reader:
@@ -65,6 +58,8 @@ def generate_page(from_path, template_path, dest_path):
 
     template_content = template_content.replace("{{ Title }}", html_title)
     template_content = template_content.replace("{{ Content }}", html_content)
+    template_content = template_content.replace('href="/', f'href="{basepath}')
+    template_content = template_content.replace('src="/', f'src="{basepath}')
 
     if not os.path.exists(dest_path):
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
@@ -72,15 +67,16 @@ def generate_page(from_path, template_path, dest_path):
     with open(dest_path, "w", encoding="utf-8") as file_writer:
         file_writer.write(template_content)
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
     """
     Recursively generates HTML pages from Markdown files in a directory tree using a specified template.
     Args:
         dir_path_content (str): Path to the root directory containing Markdown files and subdirectories.
         template_path (str): Path to the HTML template file to use for page generation.
         dest_dir_path (str): Path to the destination directory where generated HTML files will be saved.
+        basepath (str): Base path to be used for relative links or other purposes in page generation.
     Raises:
-        FileNotFoundError: If the content directory path or template path does not exist.
+        FileNotFoundError: If the content directory or template file does not exist.
     """
     if not os.path.exists(dir_path_content):
         raise FileNotFoundError("Invalid path for contents given")
@@ -93,9 +89,9 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
         dest_full_path = os.path.join(dest_dir_path, item)
         if os.path.isfile(src_full_path) and Path(item).suffix == ".md":
             dest_full_path = Path(dest_full_path).with_suffix(".html")
-            generate_page(src_full_path, template_path, dest_full_path)
+            generate_page(src_full_path, template_path, dest_full_path, basepath)
         else:
-            generate_pages_recursive(src_full_path, template_path, dest_full_path)
+            generate_pages_recursive(src_full_path, template_path, dest_full_path, basepath)
     
 
 
